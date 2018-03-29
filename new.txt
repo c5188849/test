@@ -1,4 +1,39 @@
+Step-by-step guide
+I followed the following the steps to install the influxDB in ubuntu:
 
- this is for testing
-hello this is me
-i am editing this file for test
+Install influx
+sudo apt-get update && apt-get install influxdb
+Modify the collectd influx configuration. make sure the "typesdb" option is pointing to the collectd types.
+
+search and modify the [[collectd]] block
+$  vi /etc/influxdb/influxdb.conf
+[[collectd]]
+  enabled = true
+  bind-address = ":25826" # the bind address
+  database = "collectd" # Name of the database that will be written to
+  retention-policy = ""
+  batch-size = 5000 # will flush if this many points get buffered
+  batch-pending = 10 # number of batches that may be pending in memory
+  batch-timeout = "10s"
+  read-buffer = 0 # UDP read buffer size, 0 means to use OS default
+  typesdb = "/opt/collectd/share/collectd/types.db"
+  security-level = "none" # "none", "sign", or "encrypt"
+IF collectd is not installed on the system - download the types.db file as influx needs this
+sudo mkdir /opt/collectd && mkdir /opt/collectd/share && mkdir /opt/collectd/share/collectd && cd /opt/collectd/share/collectd && wget https://raw.githubusercontent.com/collectd/collectd/master/src/types.db
+Start InfluxDB
+sudo service influxdb start
+Create a collectd database
+$ influx
+> CREATE DATABASE collectd
+> exit
+By default influxDB uses port 8083. You can check the influxDB web page at http://<AWS_IP>:8083
+
+Testing the DB
+You can test the database on the remote from the host as follows:
+
+Try to write data to 'collectd' database created in above steps:
+curl -i -XPOST 'http://<remote_server_ip>:8086/write?db=collectd' --data-binary "cpu_load,host=nuc1 value=5678"
+Read the values from database (written above):
+curl -G 'http://<remote_server_ip>:8086/query?pretty=true' --data-urlencode "db=collectd" --data-urlencode "q=SELECT value FROM cpu_load WHERE host='nuc1'"
+ 
+
